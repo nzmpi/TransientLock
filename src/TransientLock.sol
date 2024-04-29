@@ -15,7 +15,7 @@ contract TransientLock {
     modifier guardOne() {
         bytes32 selector = bytes32(ReentryOne.selector);
         assembly {
-            if eq(tload(GUARD_ONE_SLOT), 1) {
+            if tload(GUARD_ONE_SLOT) {
                 mstore(0, selector)
                 revert(0, 4)
             }
@@ -30,7 +30,7 @@ contract TransientLock {
     modifier guardTwo() {
         bytes32 selector = bytes32(ReentryTwo.selector);
         assembly {
-            if eq(tload(GUARD_TWO_SLOT), 1) {
+            if tload(GUARD_TWO_SLOT) {
                 mstore(0, selector)
                 revert(0, 4)
             }
