@@ -58,16 +58,19 @@ contract TestTransientLock is Test {
     }
 
     function test_gas_usage() public {
+        // deploying here to make gas comparison fairer
         TransientLock tlock = new TransientLock();
         uint256 gasBefore = gasleft();
         tlock.entryOne();
         uint256 gasAfterTlock = gasBefore - gasleft();
 
+        // modifier is using cold storage
         ColdPersistentLock cplock = new ColdPersistentLock();
         gasBefore = gasleft();
         cplock.entryOne();
         uint256 gasAfterCpl = gasBefore - gasleft();
 
+        // modifier is using warm storage
         WarmPersistentLock wplock = new WarmPersistentLock();
         gasBefore = gasleft();
         wplock.entryOne();
@@ -79,7 +82,7 @@ contract TestTransientLock is Test {
         uint256 percentageCold = gasAfterTlock * 100 / gasAfterCpl;
         uint256 percentageWarm = gasAfterTlock * 100 / gasAfterWpl;
         assertLe(percentageCold, 60, "Wrong gas usage cold storage");
-        assertGe(percentageWarm, 100, "Wrong gas usage Warm storage");
+        assertGe(percentageWarm, 100, "Wrong gas usage warm storage");
 
         console.log("gas usage:");
         console.log("tlock = ", gasAfterTlock);
