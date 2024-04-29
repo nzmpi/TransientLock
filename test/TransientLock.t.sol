@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/TransientLock.sol";
+import "./utils/ColdPersistentLock.sol";
+import "./utils/WarmPersistentLock.sol";
 
 contract TestTransientLock is Test {
     enum FallbackToCall {
@@ -20,7 +22,7 @@ contract TestTransientLock is Test {
         lock = new TransientLock();
         delete toCall;
     }
-    
+
     function test_valid_entryOne() public {
         lock.entryOne();
         assertTrue(lock.isEntryOneCalled(), "EntryOne should be true");
@@ -45,6 +47,46 @@ contract TestTransientLock is Test {
         lock.entryTwo();
         assertTrue(lock.isEntryOneCalled(), "EntryOne should be true");
         assertTrue(lock.isEntryTwoCalled(), "EntryTwo should be true");
+    }
+
+    function test_valid_another_user_entry() public {
+        lock.entryOne();
+        vm.prank(makeAddr("another user"));
+        lock.entryOne();
+        assertTrue(lock.isEntryOneCalled(), "EntryOne should be true");
+        assertFalse(lock.isEntryTwoCalled(), "EntryTwo should be false");
+    }
+
+    function test_gas_usage() public {
+        TransientLock tlock = new TransientLock();
+        uint256 gasBefore = gasleft();
+        tlock.entryOne();
+        uint256 gasAfterTlock = gasBefore - gasleft();
+
+        ColdPersistentLock cplock = new ColdPersistentLock();
+        gasBefore = gasleft();
+        cplock.entryOne();
+        uint256 gasAfterCpl = gasBefore - gasleft();
+
+        WarmPersistentLock wplock = new WarmPersistentLock();
+        gasBefore = gasleft();
+        wplock.entryOne();
+        uint256 gasAfterWpl = gasBefore - gasleft();
+
+        assertTrue(tlock.isEntryOneCalled(), "EntryOne in tlock should be true");
+        assertTrue(cplock.isEntryOneCalled(), "EntryOne in cplock should be true");
+        assertTrue(wplock.isEntryOneCalled(), "EntryOne in wplock should be true");
+        uint256 percentageCold = gasAfterTlock * 100 / gasAfterCpl;
+        uint256 percentageWarm = gasAfterTlock * 100 / gasAfterWpl;
+        assertLe(percentageCold, 60, "Wrong gas usage cold storage");
+        assertGe(percentageWarm, 100, "Wrong gas usage Warm storage");
+
+        console.log("gas usage:");
+        console.log("tlock = ", gasAfterTlock);
+        console.log("cplock = ", gasAfterCpl);
+        console.log("%%:", percentageCold);
+        console.log("wplock = ", gasAfterWpl);
+        console.log("%%:", percentageWarm);
     }
 
     function test_invalid_entryOneReentry() public {
@@ -84,7 +126,7 @@ contract TestTransientLock is Test {
             return;
         } else if (toCall == FallbackToCall.EntryOne) {
             delete toCall;
-            lock.entryOne();    
+            lock.entryOne();
         } else if (toCall == FallbackToCall.EntryTwo) {
             delete toCall;
             lock.entryTwo();
@@ -94,6 +136,6 @@ contract TestTransientLock is Test {
         } else if (toCall == FallbackToCall.OneThenTwo) {
             toCall = FallbackToCall.EntryTwo;
             lock.entryOne();
-        } 
+        }
     }
 }
