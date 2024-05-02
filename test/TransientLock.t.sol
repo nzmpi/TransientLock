@@ -23,6 +23,11 @@ contract TestTransientLock is Test {
         delete toCall;
     }
 
+    function test_deployment() public view {
+        assertFalse(lock.isEntryOneCalled(), "EntryOne should be false");
+        assertFalse(lock.isEntryTwoCalled(), "EntryTwo should be false");
+    }
+
     function test_valid_entryOne() public {
         lock.entryOne();
         assertTrue(lock.isEntryOneCalled(), "EntryOne should be true");
@@ -64,13 +69,13 @@ contract TestTransientLock is Test {
         tlock.entryOne();
         uint256 gasAfterTlock = gasBefore - gasleft();
 
-        // modifier is using cold storage
+        // the modifier is using cold storage
         ColdPersistentLock cplock = new ColdPersistentLock();
         gasBefore = gasleft();
         cplock.entryOne();
         uint256 gasAfterCpl = gasBefore - gasleft();
 
-        // modifier is using warm storage
+        // the modifier is using warm storage
         WarmPersistentLock wplock = new WarmPersistentLock();
         gasBefore = gasleft();
         wplock.entryOne();
