@@ -2,6 +2,9 @@
 
 An example of a lock that uses `transient` storage for its reentrancy guard.
 
+The contract is implemented in [src/TransientLock.sol](src/TransientLock.sol).
+The tests are in [tests/TransientLock.t.sol](tests/TransientLock.t.sol).
+
 ## How to use
 
  - Use `git clone git@github.com:nzmpi/TransientLock.git && cd TransientLock`.
