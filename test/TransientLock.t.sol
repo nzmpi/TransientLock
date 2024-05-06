@@ -12,7 +12,8 @@ contract TestTransientLock is Test {
         EntryOne,
         EntryTwo,
         TwoThenOne,
-        OneThenTwo
+        OneThenTwo,
+        EntryThree
     }
 
     FallbackToCall toCall;
@@ -62,6 +63,12 @@ contract TestTransientLock is Test {
         assertFalse(lock.isEntryTwoCalled(), "EntryTwo should be false");
     }
 
+    function test_valid_entryThree() public {
+        toCall = FallbackToCall.EntryThree;
+        lock.entryThree(42);
+        assertEq(lock.allowance(address(this)), 0, "Allowance should be 0");
+    }
+
     function test_gas_usage() public {
         // deploying here to make gas comparison fairer
         TransientLock tlock = new TransientLock();
@@ -89,12 +96,29 @@ contract TestTransientLock is Test {
         assertLe(percentageCold, 60, "Wrong gas usage cold storage");
         assertGe(percentageWarm, 100, "Wrong gas usage warm storage");
 
-        console.log("gas usage:");
+        console.log("Reentry gas usage:");
         console.log("tlock = ", gasAfterTlock);
         console.log("cplock = ", gasAfterCpl);
         console.log("%%:", percentageCold);
         console.log("wplock = ", gasAfterWpl);
         console.log("%%:", percentageWarm);
+
+        // APPROVE PATTERN
+        gasBefore = gasleft();
+        tlock.entryThree(1337);
+        gasAfterTlock = gasBefore - gasleft();
+
+        gasBefore = gasleft();
+        cplock.entryThree(1337);
+        gasAfterCpl = gasBefore - gasleft();
+        percentageCold = gasAfterTlock * 100 / gasAfterCpl;
+        assertLe(percentageCold, 10, "Wrong approve gas usage cold storage");
+
+        console.log("");
+        console.log("Approve gas usage:");
+        console.log("tlock = ", gasAfterTlock);
+        console.log("cplock = ", gasAfterCpl);
+        console.log("%%:", percentageCold);
     }
 
     function test_invalid_entryOneReentry() public {
@@ -129,6 +153,10 @@ contract TestTransientLock is Test {
         assertFalse(lock.isEntryTwoCalled(), "EntryTwo should be false");
     }
 
+    function checkAllowance() internal view {
+        assertEq(lock.allowance(address(this)), 42, "Allowance should be 42");
+    }
+
     fallback() external {
         if (toCall == FallbackToCall.None) {
             return;
@@ -144,6 +172,9 @@ contract TestTransientLock is Test {
         } else if (toCall == FallbackToCall.OneThenTwo) {
             toCall = FallbackToCall.EntryTwo;
             lock.entryOne();
+        } else if (toCall == FallbackToCall.EntryThree) {
+            delete toCall;
+            checkAllowance();
         }
     }
 }

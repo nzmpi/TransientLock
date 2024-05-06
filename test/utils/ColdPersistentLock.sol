@@ -9,8 +9,11 @@ contract ColdPersistentLock {
     bool public isEntryOneCalled;
     bool public isEntryTwoCalled;
 
+    mapping(address => uint256) allowance;
+
     error ReentryOne();
     error ReentryTwo();
+    error WrongAllowance();
 
     modifier guardOne() {
         bytes32 selector = bytes32(ReentryOne.selector);
@@ -64,5 +67,16 @@ contract ColdPersistentLock {
                 revert(0, 4)
             }
         }
+    }
+
+    function entryThree(uint256 amount) external {
+        allowance[msg.sender] = amount;
+
+        // do a swap, flashloan, transferFrom, etc.
+        (bool s,) = msg.sender.call("call fallback");
+        if (!s) revert WrongAllowance();
+
+        // delete allowance for safety
+        delete allowance[msg.sender];
     }
 }
